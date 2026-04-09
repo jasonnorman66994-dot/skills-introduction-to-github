@@ -353,7 +353,7 @@ Shows how often users report suspicious emails.
       <title>Response Time Tracker</title>
       <chart>
         <search>
-          <query>index=siem_logs action="block" | eval response_time=_time - earliest(_time) | stats avg(response_time) by analyst</query>
+          <query>index=siem_logs action="block" | eventstats earliest(_time) as start_time by analyst | eval response_time=_time - start_time | stats avg(response_time) by analyst</query>
         </search>
         <option name="charting.chart">column</option>
       </chart>
