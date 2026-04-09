@@ -250,7 +250,8 @@ Table showing which analyst performed which mitigation step.
 **Panel: Response Time Tracker**
 ```spl
 index=siem_logs action="block"
-| eval response_time=_time - earliest(_time)
+| eventstats earliest(_time) as start_time
+| eval response_time=_time - start_time
 | stats avg(response_time) by analyst
 ```
 Measures average time from detection to mitigation.
