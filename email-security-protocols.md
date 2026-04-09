@@ -67,8 +67,8 @@ Since you already have a certificate, you might want to explore:
 ### 2. Simulate the Phishing Attempt
 
 - From your Kali VM, send a test phishing-style email (e.g., "Password Reset Required").
-- Instead of a malicious link, embed a safe placeholder link (like `http://lab.local/phish-test`).
-- This ensures you're testing detection without harvesting credentials.
+- Instead of a malicious link, embed a safe placeholder link (like `http://lab.test/phish-test`).
+- This ensures you're testing detection without harvesting credentials; map `lab.test` in your lab DNS or local hosts file on the relevant VMs so it resolves consistently inside the lab.
 
 ### 3. Observe Defensive Layers
 
