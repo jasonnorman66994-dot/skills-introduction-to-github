@@ -119,7 +119,7 @@ This blueprint is exactly how enterprises structure phishing defense drills—sa
 | Task | Tool | Goal |
 |------|------|------|
 | Send Email | PowerShell / Thunderbird | Fake "Password Reset" message |
-| Embed Safe Link | `http://lab.local/phish-test` | No real credential harvesting |
+| Embed Safe Link | `http://lab.test/phish-test` | No real credential harvesting |
 | Track Delivery | hMailServer Logs | Confirm email reaches victim |
 
 ### 🔍 Phase 3: Observe Detection
@@ -430,18 +430,24 @@ Shows how often users report suspicious emails.
 
 ### 1. Detection Stage
 
-**Trigger:**
+**Trigger (Search 1 — email authentication failures):**
 ```spl
 index=mail_logs spf_result="fail" OR dkim_result="fail"
-index=endpoint_logs url="http://lab.local/phish-test"
+```
+**Trigger (Search 2 — user click on phishing link):**
+```spl
+index=endpoint_logs url="http://lab.test/phish-test"
 ```
 **Action:** Auto-tag event as "Phishing Suspected" → Route to "Detection" stage in playbook dashboard.
 
 ### 2. Triage Stage
 
-**Trigger:**
+**Trigger (Search 1 — user click counts):**
 ```spl
 index=endpoint_logs sourcetype="web_activity" | stats count by user
+```
+**Trigger (Search 2 — IDS phishing alerts):**
+```spl
 index=ids_logs signature="Phishing Attempt"
 ```
 **Action:** Assign severity based on user count and IDS hits → Populate "Triage" panel with analyst assignment.
@@ -607,7 +613,10 @@ def sandbox_url_analysis(container):
     phantom.debug(f"Submitting URL to VirusTotal: {url}")
 
     # Example VirusTotal API call
-    api_key = "YOUR_VIRUSTOTAL_API_KEY"
+    # IMPORTANT: Never hard-code credentials. Retrieve the API key from your
+    # SOAR platform's credential store (e.g., a Phantom asset) or an
+    # environment variable, not from source code.
+    api_key = phantom.get_credential(asset_name="virustotal", field="api_key")
     vt_url = "https://www.virustotal.com/api/v3/urls"
     headers = {"x-apikey": api_key}
     data = {"url": url}
