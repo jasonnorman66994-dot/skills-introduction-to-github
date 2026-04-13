@@ -7,6 +7,8 @@ from .authentication import Authenticator, AuthMethod
 from .authorization import AuthorizationEngine, Policy, Permission
 from .session import SessionManager, Session
 from .audit import AuditLogger, AuditEvent, EventType, Severity
+from .ratelimit import RateLimiter, AuthenticationAttemptTracker
+from .cache import AuthorizationCache, PolicyCache, cached, CacheEntry
 
 __all__ = [
     "Authenticator",
@@ -20,4 +22,10 @@ __all__ = [
     "AuditEvent",
     "EventType",
     "Severity",
+    "RateLimiter",
+    "AuthenticationAttemptTracker",
+    "AuthorizationCache",
+    "PolicyCache",
+    "cached",
+    "CacheEntry",
 ]

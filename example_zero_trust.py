@@ -5,6 +5,13 @@ Example: Zero Trust Security Implementation
 Demonstrates multi-factor authentication and least privilege authorization.
 """
 
+import sys
+import io
+
+# Fix encoding on Windows
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 from zero_trust import Authenticator, AuthorizationEngine, Policy, Permission
 from zero_trust.authentication import AuthMethod
 
