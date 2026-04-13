@@ -628,9 +628,35 @@ def sandbox_url_analysis(container):
 
         # Retrieve report
         report_url = f"https://www.virustotal.com/api/v3/analyses/{analysis_id}"
-        report = requests.get(report_url, headers=headers).json()
-        verdict = report["data"]["attributes"]["stats"]
+        try:
+            report_response = requests.get(report_url, headers=headers, timeout=30)
+        except requests.RequestException as exc:
+            phantom.debug(f"Sandbox report retrieval failed: {exc}")
+            return
 
+        if report_response.status_code != 200:
+            phantom.debug(
+                f"Sandbox report request failed with status {report_response.status_code}: "
+                f"{report_response.text}"
+            )
+            return
+
+        report = report_response.json()
+        attributes = report.get("data", {}).get("attributes", {})
+        analysis_status = attributes.get("status")
+
+        if analysis_status and analysis_status != "completed":
+            phantom.debug(f"Sandbox analysis not ready yet. Current status: {analysis_status}")
+            phantom.add_note(
+                container=container,
+                content=f"Sandbox analysis for {url} is not ready yet (status: {analysis_status}).",
+            )
+            return
+
+        verdict = attributes.get("stats")
+        if verdict is None:
+            phantom.debug("Sandbox report did not include verdict statistics.")
+            return
         phantom.debug(f"Sandbox verdict: {verdict}")
         phantom.add_note(container=container, content=f"Sandbox verdict for {url}: {verdict}")
     else:
