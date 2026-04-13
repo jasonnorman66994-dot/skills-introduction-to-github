@@ -444,7 +444,7 @@ index=endpoint_logs url="http://lab.test/phish-test"
 
 **Trigger (Search 1 — user click counts):**
 ```spl
-index=endpoint_logs sourcetype="web_activity" | stats count by user
+index=endpoint_logs sourcetype="web_activity" url="http://lab.test/phish-test" | stats count by user
 ```
 **Trigger (Search 2 — IDS phishing alerts):**
 ```spl
