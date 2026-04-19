@@ -33,12 +33,12 @@ setup(
         "dev": [
             "pytest>=7.4.3",
             "pytest-cov>=4.1.0",
-            "black>=23.12.0",
+            "black>=26.3.1",
             "flake8>=6.1.0",
             "mypy>=1.7.1",
         ],
         "api": [
-            "fastapi>=0.109.0",
+            "fastapi>=0.109.1",
             "uvicorn>=0.27.0",
             "pydantic>=2.5.0",
         ],
