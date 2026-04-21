@@ -1,46 +1,5 @@
 # Email Security Protocols & Defensive Lab Setup
 
-## 🔐 Zero Trust Security Architecture
-
-Zero Trust is a security paradigm that requires continuous verification of all users and devices, implementing **least privilege access** and **multi-factor authentication (MFA)**.
-
-### Key Principles
-
-1. **Verify Explicitly:** Always authenticate and authorize with all available data points
-2. **Least Privilege Access:** Users get minimal permissions needed to perform their role
-3. **Assume Breach:** Design systems assuming an attacker has already gained initial access
-4. **Continuous Verification:** Re-verify trust continuously throughout the user session
-
-### Implementation Example
-
-```python
-from zero_trust import Authenticator, AuthorizationEngine, Policy, Permission
-from zero_trust.authentication import AuthMethod
-
-# Authenticate with MFA
-authenticator = Authenticator()
-credentials = {
-    AuthMethod.PASSWORD: "secure_password",
-    AuthMethod.TOTP: "123456",
-}
-token = authenticator.authenticate("user123", credentials)
-
-# Authorize with least privilege
-authz = AuthorizationEngine()
-policy = Policy(
-    policy_id="policy-001",
-    principal="user123",
-    resource="/api/users/*",
-    permissions={Permission.READ},
-)
-authz.add_policy(policy)
-
-if authz.authorize("user123", "/api/users/list", Permission.READ):
-    print("Access granted")
-```
-
----
-
 ## 🔐 Email Security Protocols
 
 **SPF, DKIM, and DMARC** are standards that prevent attackers from spoofing your domain.
@@ -160,7 +119,7 @@ This blueprint is exactly how enterprises structure phishing defense drills—sa
 | Task | Tool | Goal |
 |------|------|------|
 | Send Email | PowerShell / Thunderbird | Fake "Password Reset" message |
-| Embed Safe Link | `http://lab.local/phish-test` | No real credential harvesting |
+| Embed Safe Link | `http://lab.test/phish-test` | No real credential harvesting |
 | Track Delivery | hMailServer Logs | Confirm email reaches victim |
 
 ### 🔍 Phase 3: Observe Detection
@@ -471,18 +430,24 @@ Shows how often users report suspicious emails.
 
 ### 1. Detection Stage
 
-**Trigger:**
+**Trigger (Search 1 — email authentication failures):**
 ```spl
 index=mail_logs spf_result="fail" OR dkim_result="fail"
-index=endpoint_logs url="http://lab.local/phish-test"
+```
+**Trigger (Search 2 — user click on phishing link):**
+```spl
+index=endpoint_logs url="http://lab.test/phish-test"
 ```
 **Action:** Auto-tag event as "Phishing Suspected" → Route to "Detection" stage in playbook dashboard.
 
 ### 2. Triage Stage
 
-**Trigger:**
+**Trigger (Search 1 — user click counts):**
 ```spl
-index=endpoint_logs sourcetype="web_activity" | stats count by user
+index=endpoint_logs sourcetype="web_activity" url="http://lab.test/phish-test" | stats count by user
+```
+**Trigger (Search 2 — IDS phishing alerts):**
+```spl
 index=ids_logs signature="Phishing Attempt"
 ```
 **Action:** Assign severity based on user count and IDS hits → Populate "Triage" panel with analyst assignment.
@@ -648,7 +613,10 @@ def sandbox_url_analysis(container):
     phantom.debug(f"Submitting URL to VirusTotal: {url}")
 
     # Example VirusTotal API call
-    api_key = "YOUR_VIRUSTOTAL_API_KEY"
+    # IMPORTANT: Never hard-code credentials. Retrieve the API key from your
+    # SOAR platform's credential store (e.g., a Phantom asset) or an
+    # environment variable, not from source code.
+    api_key = phantom.get_credential(asset_name="virustotal", field="api_key")
     vt_url = "https://www.virustotal.com/api/v3/urls"
     headers = {"x-apikey": api_key}
     data = {"url": url}
@@ -660,9 +628,35 @@ def sandbox_url_analysis(container):
 
         # Retrieve report
         report_url = f"https://www.virustotal.com/api/v3/analyses/{analysis_id}"
-        report = requests.get(report_url, headers=headers).json()
-        verdict = report["data"]["attributes"]["stats"]
+        try:
+            report_response = requests.get(report_url, headers=headers, timeout=30)
+        except requests.RequestException as exc:
+            phantom.debug(f"Sandbox report retrieval failed: {exc}")
+            return
 
+        if report_response.status_code != 200:
+            phantom.debug(
+                f"Sandbox report request failed with status {report_response.status_code}: "
+                f"{report_response.text}"
+            )
+            return
+
+        report = report_response.json()
+        attributes = report.get("data", {}).get("attributes", {})
+        analysis_status = attributes.get("status")
+
+        if analysis_status and analysis_status != "completed":
+            phantom.debug(f"Sandbox analysis not ready yet. Current status: {analysis_status}")
+            phantom.add_note(
+                container=container,
+                content=f"Sandbox analysis for {url} is not ready yet (status: {analysis_status}).",
+            )
+            return
+
+        verdict = attributes.get("stats")
+        if verdict is None:
+            phantom.debug("Sandbox report did not include verdict statistics.")
+            return
         phantom.debug(f"Sandbox verdict: {verdict}")
         phantom.add_note(container=container, content=f"Sandbox verdict for {url}: {verdict}")
     else:
